@@ -4,10 +4,9 @@
 /**
  * Created by knut on 14-11-23.
  */
-var rewire = require("rewire");
-var utils = require("./utils");
-var mermaid = require("./mermaid");
-var log = require('./logger').create();
+//var rewire = require('rewire');
+var mermaid = require('./mermaid');
+//var log = require('./logger').create();
 
 describe('when using mermaid and ',function() {
     describe('when detecting chart type ',function() {
@@ -15,19 +14,20 @@ describe('when using mermaid and ',function() {
         //var document;
         //var window;
         beforeEach(function () {
-            var MockBrowser = require('mock-browser').mocks.MockBrowser;
-            var mock = new MockBrowser();
+            //var MockBrowser = require('mock-browser').mocks.MockBrowser;
+            //var mock = new MockBrowser();
+            //
+            //delete global.mermaid_config;
+            //
+            //// and in the run-code inside some object
+            //global.document = mock.getDocument();
+            //global.window = mock.getWindow();
 
-            delete global.mermaid_config;
-
-            // and in the run-code inside some object
-            document = mock.getDocument();
-            window = mock.getWindow();
         });
 
         it('should not start rendering with mermaid_config.startOnLoad set to false', function () {
-            mermaid = rewire('./mermaid');
-            mermaid_config ={startOnLoad : false};
+            //mermaid = rewire('./mermaid');
+            global.mermaid_config ={startOnLoad : false};
 
             document.body.innerHTML = '<div class="mermaid">graph TD;\na;</div>';
             spyOn(global.mermaid,'init');
@@ -37,9 +37,9 @@ describe('when using mermaid and ',function() {
         });
 
         it('should not start rendering with mermaid.startOnLoad set to false', function () {
-            mermaid = rewire('./mermaid');
+            //mermaid = rewire('./mermaid');
             global.mermaid.startOnLoad =  false;
-            mermaid_config ={startOnLoad : true};
+            global.mermaid_config ={startOnLoad : true};
 
             document.body.innerHTML = '<div class="mermaid">graph TD;\na;</div>';
             spyOn(global.mermaid,'init');
@@ -48,9 +48,9 @@ describe('when using mermaid and ',function() {
         });
 
         it('should start rendering with both startOnLoad set', function () {
-            mermaid = rewire('./mermaid');
+            //mermaid = rewire('./mermaid');
             global.mermaid.startOnLoad =  true;
-            mermaid_config ={startOnLoad : true};
+            global.mermaid_config ={startOnLoad : true};
             document.body.innerHTML = '<div class="mermaid">graph TD;\na;</div>';
             spyOn(global.mermaid,'init');
             mermaid.contentLoaded();
@@ -58,7 +58,7 @@ describe('when using mermaid and ',function() {
         });
 
         it('should start rendering with mermaid.startOnLoad set and no mermaid_config defined', function () {
-            mermaid = rewire('./mermaid');
+            //mermaid = rewire('./mermaid');
             global.mermaid.startOnLoad =  true;
             document.body.innerHTML = '<div class="mermaid">graph TD;\na;</div>';
             spyOn(global.mermaid,'init');
@@ -67,7 +67,7 @@ describe('when using mermaid and ',function() {
         });
 
         it('should start rendering as a default with no changes performed', function () {
-            mermaid = rewire('./mermaid');
+            //mermaid = rewire('./mermaid');
             document.body.innerHTML = '<div class="mermaid">graph TD;\na;</div>';
             spyOn(global.mermaid,'init');
             mermaid.contentLoaded();
@@ -77,27 +77,26 @@ describe('when using mermaid and ',function() {
     });
 
     describe('when calling addEdges ',function() {
-        var mermaid;
         var graph = require('./diagrams/flowchart/graphDb');
         var flow = require('./diagrams/flowchart/parser/flow');
         var flowRend = require('./diagrams/flowchart/flowRenderer');
 
         beforeEach(function () {
-            mermaid_config ={startOnLoad : false};
-            var MockBrowser = require('mock-browser').mocks.MockBrowser;
-            var mock = new MockBrowser();
+            global.mermaid_config ={startOnLoad : false};
+            //var MockBrowser = require('mock-browser').mocks.MockBrowser;
+            //var mock = new MockBrowser();
             flow.parser.yy =graph;
             graph.clear();
-            document = mock.getDocument();
-            mermaid = rewire('./mermaid');
+            //global.document = mock.getDocument();
+            //mermaid = rewire('./mermaid');
         });
         it('it should handle edges with text', function () {
-            var res = flow.parser.parse('graph TD;A-->|text ex|B;');
-            var vert = flow.parser.yy.getVertices();
+            flow.parser.parse('graph TD;A-->|text ex|B;');
+            flow.parser.yy.getVertices();
             var edges = flow.parser.yy.getEdges();
 
             var mockG = {
-                setEdge:function(start, end,options,name){
+                setEdge:function(start, end,options){
                     expect(start).toBe('A');
                     expect(end).toBe('B');
                     expect(options.arrowhead).toBe('normal');
@@ -109,12 +108,12 @@ describe('when using mermaid and ',function() {
         });
 
         it('should handle edges without text', function () {
-            var res = flow.parser.parse('graph TD;A-->B;');
-            var vert = flow.parser.yy.getVertices();
+            flow.parser.parse('graph TD;A-->B;');
+            flow.parser.yy.getVertices();
             var edges = flow.parser.yy.getEdges();
 
             var mockG = {
-                setEdge:function(start, end,options,name){
+                setEdge:function(start, end,options){
                     expect(start).toBe('A');
                     expect(end).toBe('B');
                     expect(options.arrowhead).toBe('normal');
@@ -126,12 +125,12 @@ describe('when using mermaid and ',function() {
 
 
         it('should handle open-ended edges', function () {
-            var res = flow.parser.parse('graph TD;A---B;');
-            var vert = flow.parser.yy.getVertices();
+            flow.parser.parse('graph TD;A---B;');
+            flow.parser.yy.getVertices();
             var edges = flow.parser.yy.getEdges();
 
             var mockG = {
-                setEdge:function(start, end,options,name){
+                setEdge:function(start, end,options){
                     expect(start).toBe('A');
                     expect(end).toBe('B');
                     expect(options.arrowhead).toBe('none');
@@ -142,12 +141,12 @@ describe('when using mermaid and ',function() {
         });
 
         it('should handle edges with styles defined', function () {
-            var res = flow.parser.parse('graph TD;A---B; linkStyle 0 stroke:val1,stroke-width:val2;');
-            var vert = flow.parser.yy.getVertices();
+            flow.parser.parse('graph TD;A---B; linkStyle 0 stroke:val1,stroke-width:val2;');
+            flow.parser.yy.getVertices();
             var edges = flow.parser.yy.getEdges();
 
             var mockG = {
-                setEdge:function(start, end,options,name){
+                setEdge:function(start, end,options){
                     expect(start).toBe('A');
                     expect(end).toBe('B');
                     expect(options.arrowhead).toBe('none');
@@ -158,12 +157,12 @@ describe('when using mermaid and ',function() {
             flowRend.addEdges(edges,mockG);
         });
         it('should handle edges with text and styles defined', function () {
-            var res = flow.parser.parse('graph TD;A---|the text|B; linkStyle 0 stroke:val1,stroke-width:val2;');
-            var vert = flow.parser.yy.getVertices();
+            flow.parser.parse('graph TD;A---|the text|B; linkStyle 0 stroke:val1,stroke-width:val2;');
+            flow.parser.yy.getVertices();
             var edges = flow.parser.yy.getEdges();
 
             var mockG = {
-                setEdge:function(start, end,options,name){
+                setEdge:function(start, end,options){
                     expect(start).toBe('A');
                     expect(end).toBe('B');
                     expect(options.arrowhead).toBe('none');

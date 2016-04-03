@@ -308,6 +308,30 @@ describe('when parsing ',function(){
         expect(edges[0].text).toBe('');
     });
 
+    it('should handle node names with "end" substring',function(){
+        var res = flow.parser.parse('graph TD\nendpoint --> sender');
+
+        var vert = flow.parser.yy.getVertices();
+        var edges = flow.parser.yy.getEdges();
+
+        expect(vert['endpoint'].id).toBe('endpoint');
+        expect(vert['sender'].id).toBe('sender');
+        expect(edges[0].start).toBe('endpoint');
+        expect(edges[0].end).toBe('sender');
+    });
+
+    it('should handle node names ending with keywords',function(){
+        var res = flow.parser.parse('graph TD\nblend --> monograph');
+
+        var vert = flow.parser.yy.getVertices();
+        var edges = flow.parser.yy.getEdges();
+
+        expect(vert['blend'].id).toBe('blend');
+        expect(vert['monograph'].id).toBe('monograph');
+        expect(edges[0].start).toBe('blend');
+        expect(edges[0].end).toBe('monograph');
+    });
+
     it('should handle open ended edges',function(){
         var res = flow.parser.parse('graph TD;A---B;');
 
@@ -431,7 +455,50 @@ describe('when parsing ',function(){
         expect(edges[0].type).toBe('arrow');
     });
 
-    describe("it should handle text on edges",function(){
+    describe('it should handle interaction, ',function(){
+
+        it('it should be possible to use click to a callback',function(){
+            spyOn(graph,'setClickEvent');
+            var res = flow.parser.parse('graph TD\nA-->B\nclick A callback');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+            expect(graph.setClickEvent).toHaveBeenCalledWith('A','callback',undefined,undefined);
+        });
+
+        it('it should be possible to use click to a callback with toolip',function(){
+            spyOn(graph,'setClickEvent');
+            var res = flow.parser.parse('graph TD\nA-->B\nclick A callback "tooltip"');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+            expect(graph.setClickEvent).toHaveBeenCalledWith('A','callback',undefined,'tooltip');
+        });
+
+        it('should handle interaction - click to a link',function(){
+            spyOn(graph,'setClickEvent');
+            var res = flow.parser.parse('graph TD\nA-->B\nclick A "click.html"');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+            expect(graph.setClickEvent).toHaveBeenCalledWith('A',undefined,'click.html',undefined);
+        });
+        it('should handle interaction - click to a link with tooltip',function(){
+            spyOn(graph,'setClickEvent');
+            var res = flow.parser.parse('graph TD\nA-->B\nclick A "click.html" "tooltip"');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+            expect(graph.setClickEvent).toHaveBeenCalledWith('A',undefined,'click.html','tooltip');
+        });
+    });
+
+
+    describe('it should handle text on edges',function(){
         it('it should handle text without space',function(){
             var res = flow.parser.parse('graph TD;A--x|textNoSpace|B;');
 
@@ -539,6 +606,54 @@ describe('when parsing ',function(){
             expect(edges[0].text).toBe('text including `');
 
         });
+        it('should handle v in node ids only v',function(){
+            // only v
+            var res = flow.parser.parse('graph TD;A--xv(my text);');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+
+            expect(edges[0].type).toBe('arrow_cross');
+            expect(vert['v'].text).toBe('my text');
+
+        });
+        it('should handle v in node ids v at end',function(){
+            // v at end
+            var res = flow.parser.parse('graph TD;A--xcsv(my text);');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+
+            expect(edges[0].type).toBe('arrow_cross');
+            expect(vert['csv'].text).toBe('my text');
+
+        });
+        it('should handle v in node ids v in middle',function(){
+            // v in middle
+            var res = flow.parser.parse('graph TD;A--xava(my text);');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+
+            expect(edges[0].type).toBe('arrow_cross');
+            expect(vert['ava'].text).toBe('my text');
+
+        });
+        it('should handle v in node ids, v at start',function(){
+            // v at start
+            var res = flow.parser.parse('graph TD;A--xva(my text);');
+
+            var vert = flow.parser.yy.getVertices();
+            var edges = flow.parser.yy.getEdges();
+
+
+            expect(edges[0].type).toBe('arrow_cross');
+            expect(vert['va'].text).toBe('my text');
+
+        });
         it('should handle keywords',function(){
             var res = flow.parser.parse('graph TD;A--x|text including graph space|B;');
 
@@ -568,7 +683,7 @@ describe('when parsing ',function(){
         });
     });
 
-    describe("it should handle new line type notation",function() {
+    describe('it should handle new line type notation',function() {
         it('it should handle regular lines', function () {
             var res = flow.parser.parse('graph TD;A-->B;');
 
@@ -624,7 +739,7 @@ describe('when parsing ',function(){
         });
     });
 
-    describe("it should handle text on edges using the new notation",function(){
+    describe('it should handle text on edges using the new notation',function(){
         it('it should handle text without space',function(){
             var res = flow.parser.parse('graph TD;A-- textNoSpace --xB;');
 
@@ -727,15 +842,15 @@ describe('when parsing ',function(){
             expect(edges[0].text).toBe('text including graph space and v');
 
         });
-        xit('should handle text on open links',function(){
-            var res = flow.parser.parse('graph TD;A-- text including graph space --B');
-
-            var vert = flow.parser.yy.getVertices();
-            var edges = flow.parser.yy.getEdges();
-
-            expect(edges[0].text).toBe('text including graph space');
-
-        });
+        //xit('should handle text on open links',function(){
+        //    var res = flow.parser.parse('graph TD;A-- text including graph space --B');
+        //
+        //    var vert = flow.parser.yy.getVertices();
+        //    var edges = flow.parser.yy.getEdges();
+        //
+        //    expect(edges[0].text).toBe('text including graph space');
+        //
+        //});
     });
 
 
@@ -807,6 +922,7 @@ describe('when parsing ',function(){
         expect(vert['A'].type).toBe('square');
         expect(vert['A'].text).toBe('chimpansen hoppar ()[]');
     });
+
     it('should handle text in circle vertices with space',function(){
         var res = flow.parser.parse('graph TD;A((chimpansen hoppar))-->C;');
 
@@ -815,6 +931,16 @@ describe('when parsing ',function(){
 
         expect(vert['A'].type).toBe('circle');
         expect(vert['A'].text).toBe('chimpansen hoppar');
+    });
+
+    it('should handle text in ellipse vertices', function(){
+        var res = flow.parser.parse('graph TD\nA(-this is an ellipse-)-->B');
+
+        var vert = flow.parser.yy.getVertices();
+        var edges = flow.parser.yy.getEdges();
+
+        expect(vert['A'].type).toBe('ellipse');
+        expect(vert['A'].text).toBe('this is an ellipse');
     });
 
     it('should handle text in diamond vertices with space',function(){
@@ -856,7 +982,7 @@ describe('when parsing ',function(){
         expect(edges[0].text).toBe(',.?!+-*');
     });
 
-    describe("it should handle text in vertices, ",function(){
+    describe('it should handle text in vertices, ',function(){
 
         it('it should handle space',function(){
             var res = flow.parser.parse('graph TD;A-->C(Chimpansen hoppar);');
@@ -886,15 +1012,15 @@ describe('when parsing ',function(){
             expect(vert['C'].type).toBe('round');
             expect(vert['C'].text).toBe('Chimpansen hoppar åäö  <br> -  ÅÄÖ');
         });
-        xit('it should handle åäö, minus and space and br',function(){
-            var res = flow.parser.parse('graph TD; A[Object&#40;foo,bar&#41;]-->B(Thing);');
-
-            var vert = flow.parser.yy.getVertices();
-            var edges = flow.parser.yy.getEdges();
-
-            expect(vert['C'].type).toBe('round');
-            expect(vert['C'].text).toBe(' A[Object&#40;foo,bar&#41;]-->B(Thing);');
-        });
+        //xit('it should handle åäö, minus and space and br',function(){
+        //    var res = flow.parser.parse('graph TD; A[Object&#40;foo,bar&#41;]-->B(Thing);');
+        //
+        //    var vert = flow.parser.yy.getVertices();
+        //    var edges = flow.parser.yy.getEdges();
+        //
+        //    expect(vert['C'].type).toBe('round');
+        //    expect(vert['C'].text).toBe(' A[Object&#40;foo,bar&#41;]-->B(Thing);');
+        //});
         it('it should handle unicode chars',function(){
             var res = flow.parser.parse('graph TD;A-->C(Начало);');
 

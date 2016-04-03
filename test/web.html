@@ -2,18 +2,19 @@
 <html>
 <head>
     <meta charset="UTF-8">
-
+    <link rel="stylesheet" href="../dist/mermaid.forest.css"/>
     <script src="../dist/mermaid.js"></script>
     <script>
         var config = {
-            mermaid:{
-                startOnLoad:true,
-                htmlLabels:true,
-                callback:function(id){
-                    console.log(id,' rendered');
+            startOnLoad:true,
+            callback:function(id){
+                console.log(id,' rendered');
+            },
+            flowchart:{
+                    useMaxWidth:false,
+                    htmlLabels:true
                 },
-                flowChart:{width:'100%'}
-            }
+            logLevel:5
         };
         mermaid.initialize(config);
     </script>
@@ -29,27 +30,43 @@
             stroke: grey;
         }
     </style>
-    <lnk rel="stylesheet" href="seq.css"/>
-    <lnk rel="stylesheet" href="https://raw.githubusercontent.com/knsv/mermaid/master/dist/mermaid.fores.css"/>
-    <link rel="stylesheet" href="../dist/mermaid.forest.css"/>
+
 </head>
     <body>
+
     <h1>Issue 141!!!</h1>
-    <div  class="mermaid" id="i141">
+    <div style="width:200px">
+    <div class="mermaid" id="i141">
 
         graph LR
         
         %% Example diagram
-        A[Square Rect] -- Link text --> B((Circle))
+        A[Square Rect] -- Link text --> B((Circle));
         A --> C(Round Rect)
+        A --> E(- Elipse -)
         click A coolAction
         B --> D{Rhombus}
         C --> D
-        A("test(vcc) a a ") --> B;
-
+        A("test(vcc) a a ") --> B
+        snda
         
     </div>
+    </div>
     <h1>Issue 140</h1>
+    <div  class="mermaid" id="i140">
+        graph TB
+        subgraph old_sys_2
+        a2(new client)-->b2
+        oc2(Old client)-->b2
+        a3(test)-->b2
+        end
+
+        subgraph old_sys_1
+        a1(new client)-->b1(sys1 server)
+        oc1(Old client)-->b2(test)
+        end
+
+    </div>    <h1>Issue 140</h1>
     <div  class="mermaid" id="i140">
         graph LR
         A-->B
@@ -57,6 +74,7 @@
         C-->A
         D-->C
 
+    </div>
     </div>
     <div  class="mermaid" id="ettan">
         graph LR;
@@ -138,8 +156,9 @@
         c1-->a2
 
     </div>
-    <div class="mermaid" >graph TB
-        subgraph
+    <div class="mermaid">
+    graph TB
+        subgraph Tjo
             sq[Square shape] -.-> ci((Circle shape))
             od>Odd shape]-. Two line<br>edge comment .-> ro
             di{Diamond with <br/> line break} ==> ro(Rounded<br>square<br>shape)
@@ -159,28 +178,19 @@
         class sq,e green
         class di orange
     </div>
-    <div class="mermaid2">
+    <div class="mermaid">
         graph TB
-        subgraph
+        subgraph f
             sq[Square shape]-->ci((Circle shape))
             od>Odd shape]---|Two line<br>edge comment|ro
         end
-        subgraph
-            od2>Really long text in an Odd shape]-->od3>Really long text with linebreak<br>in an Odd shape];
-            di{Diamond is <br/> broken}-->ro(Rounded<br>square<br>shape);
-            di-->ro2(Rounded square shape)
-        end
-        %% Comments after double percent signs
-        subgraph
-            e((Inner / circle))-->f(,.?!+-*ز);
-            cyr[Cyrillic]-->cyr2((Circle shape Начало));
-            A[Object foo,bar]-->B(Thing)
-        end
-        style e red;
-        classDef green fill:#9f6,stroke:#333,stroke-width:2px;
-        class green sq
+subgraph dfdg
+    od2>Really long text in an Odd shape]-->od3>Really long text with linebreak<br>in an Odd shape]
+    di{Diamond is broken}-->ro(Rounded squar shape)
+    di-->ro2(Rounded square shape)
+end
     </div>
-    <div class="mermaid2">
+    <div class="mermaid">
         graph LR;
         A(Central Message Router);
         B(R TD);
@@ -191,30 +201,13 @@
         C-->|XYZ Router|D;
     </div>
 
-    <h1>Sequence diagrams (experimental)</h1>
-    <pre>
-        sequenceDiagram
-        participant John the Long
-        Alice->Bob: Hello Bob, how are you?
-        Note left of Bob: Bob thinks
-        Bob-->Alice: I am good thanks!
-        Bob-->John the Long: How about you John?
-        Note left of John the Long: Bob thinks
-        Bob-->Alice: Checking with John...
-
-        loop Multiple status checks
-        loog Naging
-        Alice->John the Long: Yes... John, how are you?
-        end
-        John the Long-->Alice: Better then you!
-        end
-    </pre>
-    <div class="mermaid2">
+    <h1>Sequence diagrams </h1>
+    <div class="mermaid">
         sequenceDiagram
         participant Alice
         Note left of Alice: Bob thinks about <br/> things <br/> to think about
     </div>
-    <div class="mermaid2">
+    <div class="mermaid">
         sequenceDiagram
         participant Alice
         participant Bob

@@ -1,11 +1,14 @@
 /**
  * Created by knut on 15-01-14.
  */
-var log = require('../../logger').create();
+var Logger = require('../../logger');
+var log = new Logger.Log();
+
 var message = '';
 var info = false;
 
 exports.setMessage = function(txt){
+    log.debug('Setting message to: '+txt);
     message = txt;
 };
 
@@ -22,5 +25,5 @@ exports.getInfo = function(){
 };
 
 exports.parseError = function(err,hash){
-    mermaidAPI.parseError(err,hash);
+    global.mermaidAPI.parseError(err,hash);
 };

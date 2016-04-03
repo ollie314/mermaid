@@ -2,15 +2,23 @@
  * Created by knut on 14-11-19.
  */
 var actors    = {};
-var actorKeys = [];
 var messages  = [];
 var notes     = [];
-var log = require('../../logger').create();
+var title = '';
+var Logger = require('../../logger');
+var log = new Logger.Log();
+
 
 
 exports.addActor = function(id,name,description){
+    // Don't allow description nulling
+    var old = actors[id];
+    if ( old && name === old.name && description == null ) return;
+
+    // Don't allow null descriptions, either
+    if ( description == null ) description = name;
+
     actors[id] = {name:name, description:description};
-    actorKeys.push(id);
 };
 
 exports.addMessage = function(idFrom, idTo, message,  answer){
@@ -38,6 +46,9 @@ exports.getActor = function(id){
 exports.getActorKeys = function(){
     return Object.keys(actors);
 };
+exports.getTitle = function() {
+  return title;
+}
 
 exports.clear = function(){
     actors   = {};
@@ -58,7 +69,9 @@ exports.LINETYPE = {
     ALT_ELSE     : 13 ,
     ALT_END      : 14 ,
     OPT_START    : 15 ,
-    OPT_END      : 16
+    OPT_END      : 16 ,
+    ACTIVE_START : 17 ,
+    ACTIVE_END   : 18
 };
 
 exports.ARROWTYPE = {
@@ -75,13 +88,20 @@ exports.PLACEMENT = {
 exports.addNote = function (actor, placement, message){
     var note = {actor:actor, placement: placement, message:message};
 
+    // Coerce actor into a [to, from, ...] array
+    var actors = [].concat(actor, actor);
+
     notes.push(note);
-    messages.push({from:actor, to:actor, message:message, type:exports.LINETYPE.NOTE, placement: placement});
+    messages.push({from:actors[0], to:actors[1], message:message, type:exports.LINETYPE.NOTE, placement: placement});
 };
+
+exports.setTitle = function(titleText){
+  title = titleText;
+}
 
 
 exports.parseError = function(err,hash){
-    mermaidAPI.parseError(err,hash);
+    global.mermaidAPI.parseError(err,hash);
 };
 
 exports.apply = function(param){
@@ -90,10 +110,16 @@ exports.apply = function(param){
             exports.apply(item);
         });
     } else {
-        // log.debug(param);
+        // console.info(param);
         switch(param.type){
             case 'addActor':
-                exports.addActor(param.actor, param.actor, param.actor);
+                exports.addActor(param.actor, param.actor, param.description);
+                break;
+            case 'activeStart':
+                exports.addSignal(param.actor, undefined, undefined, param.signalType);
+                break;
+            case 'activeEnd':
+                exports.addSignal(param.actor, undefined, undefined, param.signalType);
                 break;
             case 'addNote':
                 exports.addNote(param.actor,param.placement, param.text);
@@ -128,6 +154,8 @@ exports.apply = function(param){
             case 'altEnd':
                 exports.addSignal(undefined, undefined, undefined, param.signalType);
                 break;
+            case 'setTitle': 
+                exports.setTitle(param.text);
         }
     }
 };

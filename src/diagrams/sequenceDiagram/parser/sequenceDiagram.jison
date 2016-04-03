@@ -12,41 +12,51 @@
 
 %options case-insensitive
 
-%{
-	// Pre-lexer code can go here
-%}
+// Special states for recognizing aliases
+%x ID
+%x ALIAS
+
+// A special state for grabbing text up to the first comment/newline
+%x LINE
 
 %%
 
-[\n]+             return 'NL';
-[\-][x]			  { return 'SOLID_CROSS';}
-[\-][\-][x]		  { return 'DOTTED_CROSS';}
-[\-][>][>]		  	  { return 'SOLID_ARROW';}
-[\-][\-][>][>]		  { return 'DOTTED_ARROW';}
-\s+               /* skip whitespace */
-\#[^\n]*          /* skip comments */
-\%%[^\n]*          /* skip comments */
-"participant"     return 'participant';
-"opt"     		  return 'opt';
-"loop"     		  return 'loop';
-"alt"     		  return 'alt';
-"else"     		  return 'else';
-"end"     		  return 'end';
+[\n]+                            return 'NL';
+\s+                              /* skip all whitespace */
+<ID,ALIAS,LINE>((?!\n)\s)+       /* skip same-line whitespace */
+<INITIAL,ID,ALIAS,LINE>\#[^\n]*  /* skip comments */
+\%%[^\n]*                        /* skip comments */
+"participant"     { this.begin('ID'); return 'participant'; }
+<ID>[^\->:\n,;]+?(?=((?!\n)\s)+"as"(?!\n)\s|[#\n;]|$)  { this.begin('ALIAS'); return 'ACTOR'; }
+<ALIAS>"as"       { this.popState(); this.popState(); this.begin('LINE'); return 'AS'; }
+<ALIAS>(?:)       { this.popState(); this.popState(); return 'NL'; }
+"loop"            { this.begin('LINE'); return 'loop'; }
+"opt"             { this.begin('LINE'); return 'opt'; }
+"alt"             { this.begin('LINE'); return 'alt'; }
+"else"            { this.begin('LINE'); return 'else'; }
+<LINE>[^#\n;]*    { this.popState(); return 'restOfLine'; }
+"end"             return 'end';
 "left of"         return 'left_of';
 "right of"        return 'right_of';
 "over"            return 'over';
 "note"            return 'note';
+"activate"        { this.begin('ID'); return 'activate'; }
+"deactivate"      { this.begin('ID'); return 'deactivate'; }
 "title"           return 'title';
 "sequenceDiagram" return 'SD';
 ","               return ',';
 ";"               return 'NL';
-[^\->:\n,;]+       return 'ACTOR';
-"->"		      return 'SOLID_OPEN_ARROW';
-"-->"		 	  return 'DOTTED_OPEN_ARROW';
-"->>"			  return 'SOLID_ARROW';
+[^\+\->:\n,;]+      { yytext = yytext.trim(); return 'ACTOR'; }
+"->>"             return 'SOLID_ARROW';
 "-->>"            return 'DOTTED_ARROW';
-":"[^#\n;]+        return 'TXT';
-<<EOF>>           return 'EOF';
+"->"              return 'SOLID_OPEN_ARROW';
+"-->"             return 'DOTTED_OPEN_ARROW';
+\-[x]             return 'SOLID_CROSS';
+\-\-[x]           return 'DOTTED_CROSS';
+":"[^#\n;]+       return 'TXT';
+"+"               return '+';
+"-"               return '-';
+<<EOF>>           return 'NL';
 .                 return 'INVALID';
 
 /lex
@@ -58,7 +68,9 @@
 %% /* language grammar */
 
 start
-	: SD document 'EOF' { yy.apply($2);return $2; }
+	: SPACE start
+	| NL start
+	| SD document { yy.apply($2);return $2; }
 	;
 
 document
@@ -70,31 +82,33 @@ line
 	: SPACE statement { $$ = $2 }
 	| statement { $$ = $1 }
 	| NL { $$=[];}
-	| EOF { $$=[];}
 	;
 
 statement
-	: 'participant' actor 'NL' {$$=$2;}
+	: 'participant' actor 'AS' restOfLine 'NL' {$2.description=$4; $$=$2;}
+	| 'participant' actor 'NL' {$$=$2;}
 	| signal 'NL'
+	| 'activate' actor 'NL' {$$={type: 'activeStart', signalType: yy.LINETYPE.ACTIVE_START, actor: $2};}
+	| 'deactivate' actor 'NL' {$$={type: 'activeEnd', signalType: yy.LINETYPE.ACTIVE_END, actor: $2};}
 	| note_statement 'NL'
-	| 'title' SPACE text 'NL'
-	| 'loop' actor document end
+	| title text2 'NL' {$$=[{type:'setTitle', text:$2}]}
+	| 'loop' restOfLine document end
 	{
-		$3.unshift({type: 'loopStart', loopText:$2.actor, signalType: yy.LINETYPE.LOOP_START});
+		$3.unshift({type: 'loopStart', loopText:$2, signalType: yy.LINETYPE.LOOP_START});
 		$3.push({type: 'loopEnd', loopText:$2, signalType: yy.LINETYPE.LOOP_END});
 		$$=$3;}
-	| opt actor document end
+	| opt restOfLine document end
 	{
-		$3.unshift({type: 'optStart', optText:$2.actor, signalType: yy.LINETYPE.OPT_START});
-		$3.push({type: 'optEnd', optText:$2.actor, signalType: yy.LINETYPE.OPT_END});
+		$3.unshift({type: 'optStart', optText:$2, signalType: yy.LINETYPE.OPT_START});
+		$3.push({type: 'optEnd', optText:$2, signalType: yy.LINETYPE.OPT_END});
 		$$=$3;}
-	| alt actor document else actor document end
+	| alt restOfLine document else restOfLine document end
 	{
 		// Alt start
-		$3.unshift({type: 'altStart', altText:$2.actor, signalType: yy.LINETYPE.ALT_START});
+		$3.unshift({type: 'altStart', altText:$2, signalType: yy.LINETYPE.ALT_START});
 		// Content in alt is already in $3
 		// Else
-		$3.push({type: 'else', altText:$5.actor, signalType: yy.LINETYPE.ALT_ELSE});
+		$3.push({type: 'else', altText:$5, signalType: yy.LINETYPE.ALT_ELSE});
 		// Content in other alt
 		$3 = $3.concat($6);
 		// End
@@ -104,8 +118,16 @@ statement
 	;
 
 note_statement
-	: 'note' placement actor text2 {$$=[$3,{type:'addNote', placement:$2, actor:$3.actor, text:$4}];}
-	| 'note' 'over' spaceList actor_pair actor
+	: 'note' placement actor text2
+	{
+		$$ = [$3, {type:'addNote', placement:$2, actor:$3.actor, text:$4}];}
+	| 'note' 'over' actor_pair text2
+	{
+		// Coerce actor_pair into a [to, from, ...] array
+		$2 = [].concat($3, $3).slice(0, 2);
+		$2[0] = $2[0].actor;
+		$2[1] = $2[1].actor;
+		$$ = [$3, {type:'addNote', placement:yy.PLACEMENT.OVER, actor:$2.slice(0, 2), text:$4}];}
 	;
 
 spaceList
@@ -113,8 +135,8 @@ spaceList
     | SPACE
     ;
 actor_pair
-	: actor             { $$ = $1; }
-	| actor ',' actor   { $$ = [$1, $3]; }
+	: actor ',' actor   { $$ = [$1, $3]; }
+	| actor             { $$ = $1; }
 	;
 
 placement
@@ -123,13 +145,18 @@ placement
 	;
 
 signal
-	: actor signaltype actor text2
-	{$$ = [$1,$3,{type: 'addMessage', from:$1.actor, to:$3.actor, signalType:$2, msg:$4}]}
+	: actor signaltype '+' actor text2
+	{ $$ = [$1,$4,{type: 'addMessage', from:$1.actor, to:$4.actor, signalType:$2, msg:$5},
+	              {type: 'activeStart', signalType: yy.LINETYPE.ACTIVE_START, actor: $4}
+	             ]}
+	| actor signaltype '-' actor text2
+	{ $$ = [$1,$4,{type: 'addMessage', from:$1.actor, to:$4.actor, signalType:$2, msg:$5},
+	             {type: 'activeEnd', signalType: yy.LINETYPE.ACTIVE_END, actor: $1}
+	             ]}
+	| actor signaltype actor text2
+	{ $$ = [$1,$3,{type: 'addMessage', from:$1.actor, to:$3.actor, signalType:$2, msg:$4}]}
 	;
 
-actors: actors actor
-	  | actor
-	  ;
 actor
 	: ACTOR {$$={type: 'addActor', actor:$1}}
 	;

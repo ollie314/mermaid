@@ -1,11 +1,15 @@
 /**
  * Created by knut on 14-11-03.
  */
-var log = require('../../logger').create();
+var Logger = require('../../logger');
+var log = new Logger.Log();
+
+var d3 = require('../../d3');
 var vertices = {};
 var edges = [];
 var classes = [];
 var subGraphs = [];
+var tooltips = {};
 var subCount=0;
 var direction;
 // Functions to be run after graph rendering
@@ -63,7 +67,7 @@ exports.addVertex = function (id, text, type, style) {
  * @param linktext
  */
 exports.addLink = function (start, end, type, linktext) {
-    //log.debug('Got edge', start, end);
+    log.debug('Got edge', start, end);
     var edge = {start: start, end: end, type: undefined, text: ''};
     linktext = type.text;
 
@@ -88,8 +92,6 @@ exports.addLink = function (start, end, type, linktext) {
  * @param style
  */
 exports.updateLink = function (pos, style) {
-    var position = pos.substr(1);
-
     if(pos === 'default'){
         edges.defaultStyle = style;
     }else{
@@ -136,48 +138,69 @@ exports.setClass = function (id,className) {
         }
     }
 };
-var clickEvents = [];
+
+var setTooltip = function(id,tooltip){
+    if(typeof  tooltip !== 'undefined'){
+        tooltips[id]=tooltip;
+    }
+};
+
+var setClickFun = function(id, functionName){
+    if(typeof functionName === 'undefined'){
+        return;
+    }
+    if (typeof vertices[id] !== 'undefined') {
+        funs.push(function (element) {
+            var elem = d3.select(element).select('#'+id);
+            if (elem !== null) {
+                elem.on('click', function () {
+                    eval(functionName + '(\'' + id + '\')'); // jshint ignore:line
+                });
+            }
+        });
+    }
+};
+
+var setLink = function(id, linkStr){
+    if(typeof linkStr === 'undefined'){
+        return;
+    }
+    if (typeof vertices[id] !== 'undefined') {
+        funs.push(function (element) {
+            var elem = d3.select(element).select('#'+id);
+            if (elem !== null) {
+                elem.on('click', function () {
+                    window.open(linkStr,'newTab'); // jshint ignore:line
+                });
+            }
+        });
+    }
+};
+exports.getTooltip = function(id){
+    return tooltips[id];
+};
+
 /**
  * Called by parser when a graph definition is found, stores the direction of the chart.
  * @param dir
  */
-exports.setClickEvent = function (id,functionName) {
-
-
+exports.setClickEvent = function (id,functionName, link,tooltip) {
         if(id.indexOf(',')>0){
             id.split(',').forEach(function(id2) {
-                if (typeof vertices[id2] !== 'undefined') {
-                    funs.push(function () {
-                        var elem = document.getElementById(id2);
-                        if (elem !== null) {
-                            elem.onclick = function () {
-                                eval(functionName + '(\'' + id2 + '\')'); // jshint ignore:line
-                            };
-                        }
-                    });
-                }
+                setTooltip(id2,tooltip);
+                setClickFun(id2, functionName);
+                setLink(id2, link);
             });
         }else{
-            //log.debug('Checking now for ::'+id);
-            if(typeof vertices[id] !== 'undefined'){
-                funs.push(function(){
-                    var elem = document.getElementById(id);
-                    if(elem !== null){
-                        elem.onclick = function(){eval(functionName+'(\'' + id + '\')');}; // jshint ignore:line
-                    }
-                    else{
-                        //log.debug('id was null: '+id);
-                    }
-                });
-            }
+            setTooltip(id,tooltip);
+            setClickFun(id, functionName);
+            setLink(id, link);
         }
-
-
 };
 
-exports.bindFunctions = function(){
+exports.bindFunctions = function(element){
     funs.forEach(function(fun){
-        fun();
+        fun(element);
     });
 };
 exports.getDirection = function () {
@@ -207,6 +230,48 @@ exports.getClasses = function () {
     return classes;
 };
 
+var setupToolTips = function(element){
+
+    var tooltipElem = d3.select('.mermaidTooltip');
+    if(tooltipElem[0][0] === null){
+        tooltipElem = d3.select('body')
+            .append('div')
+            .attr('class', 'mermaidTooltip')
+            .style('opacity', 0);
+    }
+
+    var svg = d3.select(element).select('svg');
+
+    var nodes = svg.selectAll('g.node');
+    nodes
+        .on('mouseover', function() {
+            var el = d3.select(this);
+            var title = el.attr('title');
+            // Dont try to draw a tooltip if no data is provided
+            if(title === null){
+                return;
+            }
+            var rect = this.getBoundingClientRect();
+
+            tooltipElem.transition()
+                .duration(200)
+                .style('opacity', '.9');
+            tooltipElem.html(el.attr('title'))
+                .style('left', (rect.left+(rect.right-rect.left)/2) + 'px')
+                .style('top', (rect.top-14+document.body.scrollTop) + 'px');
+            el.classed('hover',true);
+
+        })
+        .on('mouseout', function() {
+            tooltipElem.transition()
+                .duration(500)
+                .style('opacity', 0);
+            var el = d3.select(this);
+            el.classed('hover',false);
+        });
+};
+funs.push(setupToolTips);
+
 /**
  * Clears the internal graph db so that a new graph can be parsed.
  */
@@ -214,16 +279,18 @@ exports.clear = function () {
     vertices = {};
     classes = {};
     edges = [];
-    //funs = [];
+    funs = [];
+    funs.push(setupToolTips);
     subGraphs = [];
     subCount = 0;
+    tooltips = [];
 };
 /**
  *
  * @returns {string}
  */
 exports.defaultStyle = function () {
-    return "fill:#ffa;stroke: #f66; stroke-width: 3px; stroke-dasharray: 5, 5;fill:#ffa;stroke: #666;";
+    return 'fill:#ffa;stroke: #f66; stroke-width: 3px; stroke-dasharray: 5, 5;fill:#ffa;stroke: #666;';
 };
 
 /**
@@ -231,7 +298,7 @@ exports.defaultStyle = function () {
  */
 exports.addSubGraph = function (list, title) {
     function uniq(a) {
-        var prims = {"boolean":{}, "number":{}, "string":{}}, objs = [];
+        var prims = {'boolean':{}, 'number':{}, 'string':{}}, objs = [];
 
         return a.filter(function(item) {
             var type = typeof item;
@@ -320,17 +387,17 @@ var indexNodes = function (id, pos) {
 exports.getDepthFirstPos = function (pos) {
     return posCrossRef[pos];
 };
-exports.indexNodes = function (id) {
+exports.indexNodes = function () {
     secCount = -1;
     if(subGraphs.length>0){
         indexNodes('none',subGraphs.length-1,0);
     }
 };
 
-exports.getSubGraphs = function (list) {
+exports.getSubGraphs = function () {
     return subGraphs;
 };
 
 exports.parseError = function(err,hash){
-    mermaidAPI.parseError(err,hash);
+    global.mermaidAPI.parseError(err,hash);
 };
